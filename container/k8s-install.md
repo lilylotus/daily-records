@@ -4,8 +4,8 @@
 
 ### 开启网络转发
 
-```
-cat <<EOF | tee /etc/modules-load.d/k8s.conf
+```bash
+cat <<EOF | tee /etc/modules-load.d/optimize.conf
 overlay
 br_netfilter
 ip_vs
@@ -14,8 +14,8 @@ ip_vs_wrr
 ip_vs_sh
 EOF
 
-sudo modprobe overlay
-sudo modprobe br_netfilter
+modprobe overlay
+modprobe br_netfilter
 # IPVS needs module - package ipset
 modprobe -- ip_vs
 modprobe -- ip_vs_rr
@@ -23,7 +23,7 @@ modprobe -- ip_vs_wrr
 modprobe -- ip_vs_sh
 
 # sysctl params required by setup, params persist across reboots
-cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
+cat <<EOF | sudo tee /etc/sysctl.d/optimize.conf
 net.bridge.bridge-nf-call-iptables  = 1
 net.bridge.bridge-nf-call-ip6tables = 1
 net.ipv4.ip_forward                 = 1
@@ -31,7 +31,7 @@ EOF
 
 # Apply sysctl params without reboot
 # sudo sysctl --system
-sysctl -p /etc/sysctl.d/k8s.conf
+sysctl -p /etc/sysctl.d/optimize.conf
 
 # 设置系统打开文件最大数
 cat >> /etc/security/limits.conf <<EOF
@@ -45,6 +45,17 @@ EOF
 ```bash
 sed -i '/ swap /s/^\(.*\)$/#\1/' /etc/fstab
 swapoff -a
+```
+
+### ip 命令路由配置
+
+```bash
+# 添加指定路由
+ip route add 10.10.10.0/24 via 10.10.10.4 dev ens32
+# 添加默认路由
+ip route add default via 10.10.10.4 dev ens32
+# 删除路由
+ip route del default via 10.10.10.2 dev ens32 
 ```
 
 ## k8s 命令行软件安装
@@ -62,7 +73,6 @@ gpgcheck=1
 repo_gpgcheck=1
 gpgkey=https://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg https://mirrors.aliyun.com/kubernetes/yum/doc/rpm-package-key.gpg
 EOF
-
 ```
 
 ```bash
@@ -77,17 +87,20 @@ yum install -y kubelet-1.28.2-0 kubeadm-1.28.2-0 kubectl-1.28.2-0
 # 开机自启
 systemctl enable kubelet
 
-# package ipset
+# package ipset，网络工具
 yum install -y ipset ipvsadm
 ```
 
-配置 `kubelet` 
+- 配置 `kubelet` 
 
 > 保证 docker 使用的 cgroupdriver 和 kubelet 使用的 cgroup 保持一致
 
 ```bash
 # /etc/sysconfig/kubelet
 KUBELET_EXTRA_ARGS="--cgroup-driver=systemd"
+
+# 命令行插入配置
+echo 'KUBELET_EXTRA_ARGS="--cgroup-driver=systemd"' > /etc/sysconfig/kubelet
 ```
 
 ## k8s 初始化
@@ -99,45 +112,103 @@ KUBELET_EXTRA_ARGS="--cgroup-driver=systemd"
 列出初始化镜像: `kubeadm config images list --kubernetes-version ${k8s_version}`
 拉取指定版本 k8s 镜像: `kubeadm config images pull --kubernetes-version ${k8s_version}`
 按照指定配置文件拉取 k8s 镜像: `kubeadm config images pull --config=kubeadm-init.yaml`
-
 指定 k8s 初始化: `kubeadm init --config=kubeadm-init.yaml --upload-certs | tee kubeadm-init.log`
 
-执行 `kubeadm init` 初始化：
+
+### k8s 镜像下载转换
 
 ```bash
-# 网络问题可以配置代理
-export http_proxy=http://192.168.1.4:7890
-export https_proxy=http://192.168.1.4:7890
+CN_REPOSITORY=registry.aliyuncs.com/google_containers
+K8S_VERSION=1.28.2
 
-# 提取拉取镜像
+# 先用国内镜像站下载镜像
+kubeadm config images pull --image-repository=${CN_REPOSITORY} --kubernetes-version=${K8S_VERSION} | tee k8s-images.log
+
+# 把标签改为 k8s 官方的
+# nerdctl tag [flags] SOURCE_IMAGE[:TAG] TARGET_IMAGE[:TAG]
+nerdctl tag --namespace k8s.io registry.aliyuncs.com/google_containers/coredns:v1.10.1 registry.k8s.io/coredns/coredns:v1.10.1
+```
+
+镜像转换脚本：
+
+```bash
+#!/bin/bash
+
+CN_REPOSITORY=registry.aliyuncs.com/google_containers
+K8S_REPOSITORY=registry.k8s.io
+K8S_VERSION=1.28.2
+IMG_FILE=k8s-images.log
+
+# 用国内 k8s 镜像仓库下载
+kubeadm config images pull --image-repository=${CN_REPOSITORY} --kubernetes-version=${K8S_VERSION} | tee ${IMG_FILE}
+
+# 国内 tag 转为 k8s 官方 tag
+# 1. 排除 coredns ，因为 coredns 特殊，镜像有层级
+kubeadm config images list --kubernetes-version=${K8S_VERSION} | awk -F'/' '{print $NF}' | grep -v coredns  | xargs -n1 -I{} nerdctl tag --namespace k8s.io ${CN_REPOSITORY}/{} ${K8S_REPOSITORY}/{}
+# 2. coredns 单独处理
+kubeadm config images list --kubernetes-version=${K8S_VERSION} | awk -F'/' '{print $NF}' | grep -v coredns | xargs -n1 -I{} nerdctl tag --namespace k8s.io ${CN_REPOSITORY}/{} ${K8S_REPOSITORY}/coredns/{}
+
+# 删除国内源下载镜像
+
+```
+
+### `kubeadm init` 初始化：
+
+```bash
+# 提取拉取镜像，指定镜像仓库
 kubeadm config images pull --image-repository=registry.aliyuncs.com/google_containers --kubernetes-version=1.28.2
 
-# 初始化
+# 采用命令行初始化
 kubeadm init --apiserver-advertise-address=10.10.10.109 --pod-network-cidr=10.244.0.0/16 --service-cidr=10.96.0.0/12 --kubernetes-version=1.28.2 --upload-certs
 
+# 采用初始化配置文件初始化
+# podSubnet: 10.244.0.0/16
+kubeadm config print init-defaults > kubeadm-init.yaml
 kubeadm init --config=kubeadm-init.yaml --upload-certs | tee kubeadm-init.log
-```
 
-
-
-- error
-
-```
-[kubelet-check] Initial timeout of 40s passed.
-error execution phase wait-control-plane: couldn't initialize a Kubernetes cluster
-To see the stack trace of this error execute with --v=5 or higher
-
-Unfortunately, an error has occurred:
-        timed out waiting for the condition
-
-This error is likely caused by:
-        - The kubelet is not running
-        - The kubelet is unhealthy due to a misconfiguration of the node in some way (required cgroups disabled)
+# 出问题后重置环境
+kubeadm reset -f
 
 ```
 
+## Calico 网络插件安装
+
+[Calico 安装文档](https://docs.tigera.io/calico/latest/getting-started/kubernetes/quickstart#install-calico)
+
+1. 安装 Calico operator [calico-tigera-operator-v3.26.1.yaml 下载](https://www.nihility.cn/files/container/calico-tigera-operator-v3.26.1.yaml)
+
+```bash
+kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/tigera-operator.yaml
+
+# 或者离线安装
+wget https://www.nihility.cn/files/container/calico-tigera-operator-v3.26.1.yaml
+kubectl create -f calico-tigera-operator-v3.26.1.yaml
 ```
-sed -i "s/cgroupDriver: systemd/cgroupDriver: cgroupfs/g" /var/lib/kubelet/config.yaml
-systemctl daemon-reload
-systemctl restart kubelet
+
+> Due to the large size of the CRD bundle, `kubectl apply` might exceed request limits. Instead, use `kubectl create` or `kubectl replace`.
+
+2. 安装自定义资源 [calico-custom-resources-v3.26.1.yaml 下载](https://www.nihility.cn/files/container/calico-custom-resources-v3.26.1.yaml)
+
+```bash
+kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/custom-resources.yaml
+
+# 或者离线安装
+wget https://www.nihility.cn/files/container/calico-custom-resources-v3.26.1.yaml
+kubectl create -f calico-custom-resources-v3.26.1.yaml
 ```
+
+> 修改配置中 `cidr: 192.168.0.0/16` 为用户定义 （常用： `10.244.0.0/16`）
+
+3. 确认是否安装成功
+
+```bash
+watch kubectl get pods -n calico-system
+```
+
+4. 删除控制平面上的污点，以便您可以在其上调度 Pod
+
+```bash
+kubectl taint nodes --all node-role.kubernetes.io/control-plane-
+kubectl taint nodes --all node-role.kubernetes.io/master-
+```
+

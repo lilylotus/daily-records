@@ -2,13 +2,13 @@
 
 [containerd 官网](https://containerd.io/)
 
-## containerd 安装
+## 安装
 
 ```bash
 yum install -y containerd.io
 ```
 
-## containerd 配置
+## 配置文件设置
 
 [containerd](https://containerd.io/)  启动之后会加载默认启动配置文件：`/etc/containerd/config.toml`。
 
@@ -21,11 +21,20 @@ yum install -y containerd.io
 - 网络转发配置
 
 ```bash
+cat <<EOF | tee /etc/modules-load.d/optimize.conf
+overlay
+br_netfilter
+EOF
+
+modprobe overlay
+modprobe br_netfilter
+
 cat <<EOF > /etc/sysctl.d/containerd.conf
 net.bridge.bridge-nf-call-iptables  = 1
 net.bridge.bridge-nf-call-ip6tables = 1
 net.ipv4.ip_forward                 = 1
 EOF
+
 sysctl -p /etc/sysctl.d/containerd.conf
 ```
 
@@ -81,7 +90,13 @@ state = "/run/containerd"
 ```bash
 wget https://github.com/containerd/nerdctl/releases/download/v1.5.0/nerdctl-1.5.0-linux-amd64.tar.gz
 mkdir nerdctl && tar -zxf nerdctl-1.5.0-linux-amd64.tar.gz -C nerdctl
-mv nerdctl/nerdctl /usr/local/bin && rm -rf nerdctl
+mv nerdctl/nerdctl /usr/local/bin/ && rm -rf nerdctl
+```
+
+- 测试 `containerd` 和 `nerdctl` 是否安装成功
+
+```bash
+nerdctl run hello-world
 ```
 
 ### cni 网络插件
@@ -113,14 +128,14 @@ tar -zxf cni-plugins-linux-amd64-v1.3.0.tgz -C /opt/cni/bin/
 ```bash
 wget https://github.com/moby/buildkit/releases/download/v0.12.2/buildkit-v0.12.2.linux-amd64.tar.gz
 mkdir buildkit && tar -zxf buildkit-v0.12.2.linux-amd64.tar.gz -C buildkit
-cp buildkit/bin/buildctl buildkit/bin/buildkitd buildkit/bin/buildkit-runc /usr/local/bin/
-rm -rf buildkit
+cp buildkit/bin/buildctl buildkit/bin/buildkitd buildkit/bin/buildkit-runc /usr/local/bin/ && rm -rf buildkit
 
 ```
 
-- systemd buildkit 系统服务 `/usr/lib/systemd/system/buildkit.service`
+- systemd buildkit 系统服务 `/usr/lib/systemd/system/buildkitd.service`
 
-```
+```bash
+cat <<EOF > /usr/lib/systemd/system/buildkitd.service
 [Unit]
 Description=BuildKit
 After=network.target
@@ -137,6 +152,9 @@ RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
+EOF
+
+systemctl start buildkitd && systemctl enable buildkitd
 ```
 
 - 测试 Dockerfile 构建镜像

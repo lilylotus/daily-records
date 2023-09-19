@@ -14,6 +14,14 @@ echo $(date "+%Y-%m-%d %H:%M:%S") "update system kernel params" >> ${LOGPATH}
 
 echo "user.max_user_namespaces=15000" >> /etc/sysctl.conf
 
+cat <<EOF | tee /etc/modules-load.d/optimize.conf
+overlay
+br_netfilter
+EOF
+
+modprobe overlay
+modprobe br_netfilter
+
 cat <<EOF > /etc/sysctl.d/optimize.conf
 vm.overcommit_memory = 1
 net.bridge.bridge-nf-call-iptables  = 1

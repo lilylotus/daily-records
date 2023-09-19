@@ -2,9 +2,9 @@
 
 自 1.24 版本起，Dockershim 已从 Kubernetes 项目中删除。
 
-## Docker 安装
+## 安装和配置
 
-### 前置 Docker 软件源和依赖软件安装
+### Docker 安装
 
 - [Docker 官方 Centos 安装](https://docs.docker.com/engine/install/centos/)
 
@@ -12,8 +12,12 @@
 yum install -y yum-utils device-mapper-persistent-data lvm2
 yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
 # yum-config-manager --disable https://download.docker.com/linux/centos/docker-ce.repo
+
 yum clean all && yum makecache faste
-yum install -y docker-ce containerd.io
+yum install -y docker-ce
+
+# 安装指定版本
+# yum install -y docker-ce-24.0.4-1.el7
 ```
 
 - Docker 软件源配置和前置软件安装 （[阿里软件源](https://developer.aliyun.com/mirror/docker-ce)）
@@ -30,7 +34,7 @@ sudo sed -i 's+download.docker.com+mirrors.aliyun.com/docker-ce+' /etc/yum.repos
 sudo yum makecache fast
 sudo yum -y install docker-ce
 # Step 4: 开启Docker服务
-sudo service docker start
+sudo systemctl start docker
 ```
 
 - 安装指定版本 Docker-ce
@@ -44,12 +48,21 @@ yum install -y docker-ce-24.0.4-1.el7 docker-ce-cli-24.0.4-1.el7 containerd.io
 
 - 配置网络转发
 
-```
+```bash
+cat <<EOF | tee /etc/modules-load.d/optimize.conf
+overlay
+br_netfilter
+EOF
+
+modprobe overlay
+modprobe br_netfilter
+
 cat <<EOF > /etc/sysctl.d/optimize.conf
 net.ipv4.ip_forward = 1
 net.bridge.bridge-nf-call-iptables = 1
 net.bridge.bridge-nf-call-ip6tables = 1
 EOF
+
 sysctl -p /etc/sysctl.d/optimize.conf
 ```
 
@@ -102,6 +115,7 @@ cat <<EOF > /etc/docker/daemon.json
     "log-opts": {"max-size": "100m"}
 }
 EOF
+
 systemctl daemon-reload && systemctl restart docker
 ```
 
