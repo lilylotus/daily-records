@@ -46,10 +46,15 @@ sysctl -p /etc/sysctl.d/containerd.conf
 [plugins]
  
     [plugins."io.containerd.grpc.v1.cri".registry]
+      # 镜像地址配置文件
+      config_path = "/etc/containerd/certs.d"
+      
       [plugins."io.containerd.grpc.v1.cri".registry.mirrors]
         [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io"]
           endpoint = ["https://9ebf40sv.mirror.aliyuncs.com"]
         [plugins."io.containerd.grpc.v1.cri".registry.mirrors."k8s.gcr.io"]
+          endpoint = ["https://registry.aliyuncs.com/google_containers"]
+        [plugins."io.containerd.grpc.v1.cri".registry.mirrors."registry.k8s.io"]
           endpoint = ["https://registry.aliyuncs.com/google_containers"]
         [plugins."io.containerd.grpc.v1.cri".registry.mirrors."gcr.io"]
           endpoint = ["xxx"]
@@ -80,6 +85,8 @@ state = "/run/containerd"
 - 每一个插件都有自己单独的目录，containerd 本身不存储任何数据，它的所有功能都来自于已加载的插件，模块化设计。
 
 ## containerd 工具安装
+
+[containerd 常用命令行工具](https://github.com/containerd/containerd/blob/main/docs/getting-started.md#interacting-with-containerd-via-cli)
 
 ### nerdctl 命令行工具
 
@@ -168,3 +175,30 @@ CMD ["/bin/sh"]
 构建：`nerdctl build -t alpine:v1 .`
 
 运行：`nerdctl run --rm alpine:v1 ls /`
+
+### cir 工具
+
+Kubelet 容器运行时接口 (CRI) 的 CLI 和验证工具。
+
+[cri-tools](https://github.com/kubernetes-sigs/cri-tools) 旨在为 Kubelet CRI 提供一系列调试和验证工具，其中包括：
+
+- crictl: CLI for kubelet CRI. [crictl-v1.28.0-linux-amd64.tar.gz](https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.28.0/crictl-v1.28.0-linux-amd64.tar.gz)
+- critest: validation test suites for kubelet CRI. [critest-v1.28.0-linux-amd64.tar.gz](https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.28.0/critest-v1.28.0-linux-amd64.tar.gz)
+
+```bash
+tar -zxf crictl-v1.28.0-linux-amd64.tar.gz -C /usr/local/bin/
+tar -zxf critest-v1.28.0-linux-amd64.tar.gz -C /usr/local/bin/
+```
+
+crictl 配置：`/etc/crictl.yaml`
+
+```bash
+cat <<EOF > /etc/crictl.yaml
+runtime-endpoint: unix:///run/containerd/containerd.sock
+image-endpoint: unix:///run/containerd/containerd.sock
+timeout: 2
+pull-image-on-create: false
+EOF
+
+```
+

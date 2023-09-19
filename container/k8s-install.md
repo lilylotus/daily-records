@@ -146,9 +146,7 @@ kubeadm config images pull --image-repository=${CN_REPOSITORY} --kubernetes-vers
 # 1. 排除 coredns ，因为 coredns 特殊，镜像有层级
 kubeadm config images list --kubernetes-version=${K8S_VERSION} | awk -F'/' '{print $NF}' | grep -v coredns  | xargs -n1 -I{} nerdctl tag --namespace k8s.io ${CN_REPOSITORY}/{} ${K8S_REPOSITORY}/{}
 # 2. coredns 单独处理
-kubeadm config images list --kubernetes-version=${K8S_VERSION} | awk -F'/' '{print $NF}' | grep -v coredns | xargs -n1 -I{} nerdctl tag --namespace k8s.io ${CN_REPOSITORY}/{} ${K8S_REPOSITORY}/coredns/{}
-
-# 删除国内源下载镜像
+kubeadm config images list --kubernetes-version=${K8S_VERSION} | awk -F'/' '{print $NF}' | grep coredns | xargs -n1 -I{} nerdctl tag --namespace k8s.io ${CN_REPOSITORY}/{} ${K8S_REPOSITORY}/coredns/{}
 
 ```
 
@@ -156,7 +154,7 @@ kubeadm config images list --kubernetes-version=${K8S_VERSION} | awk -F'/' '{pri
 
 ```bash
 # 提取拉取镜像，指定镜像仓库
-kubeadm config images pull --image-repository=registry.aliyuncs.com/google_containers --kubernetes-version=1.28.2
+kubeadm config images pull --kubernetes-version=1.28.2 --image-repository=registry.aliyuncs.com/google_containers
 
 # 采用命令行初始化
 kubeadm init --apiserver-advertise-address=10.10.10.109 --pod-network-cidr=10.244.0.0/16 --service-cidr=10.96.0.0/12 --kubernetes-version=1.28.2 --upload-certs
