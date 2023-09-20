@@ -2,23 +2,27 @@
 
 KUBELET_VERSION=1.28.2-0
 
-# 网络相关配置
+# 配置系统内核模块
 cat <<EOF | tee /etc/modules-load.d/optimize.conf
 overlay
 br_netfilter
+EOF
+modprobe overlay
+modprobe br_netfilter
+
+# 支持 IPVS needs module - package ipset
+cat <<EOF | tee /etc/modules-load.d/ipvs.conf
 ip_vs
 ip_vs_rr
 ip_vs_wrr
 ip_vs_sh
+nf_conntrack
 EOF
-
-modprobe overlay
-modprobe br_netfilter
-# IPVS needs module - package ipset
 modprobe -- ip_vs
 modprobe -- ip_vs_rr
 modprobe -- ip_vs_wrr
 modprobe -- ip_vs_sh
+modprobe -- nf_conntrack
 
 cat <<EOF | sudo tee /etc/sysctl.d/optimize.conf
 net.bridge.bridge-nf-call-iptables  = 1
@@ -37,7 +41,6 @@ EOF
 # 关闭 swap 分区
 sed -i '/ swap /s/^\(.*\)$/#\1/' /etc/fstab
 swapoff -a
-
 
 # 配置软件源
 cat <<EOF > /etc/yum.repos.d/kubernetes.repo
@@ -58,10 +61,16 @@ yum install -y ipset ipvsadm
 
 # containerd 配置
 containerd config default > /etc/containerd/config.toml
+# 使用 systemd 驱动
+sed -i '/SystemdCgroup/s/false/true/' /etc/containerd/config.toml
+# 使用国内镜像
+sed -i '/sandbox_image/s/registry.k8s.io/registry.aliyuncs.com\/google_containers/' /etc/containerd/config.toml
 
 # 开机自启
 systemctl enable containerd
 systemctl enable kubelet
 
-# 配置 kubelet
+# 配置 kubelet 使用 systemd 驱动
 echo 'KUBELET_EXTRA_ARGS="--cgroup-driver=systemd"' > /etc/sysconfig/kubelet
+
+systemctl daemon-reload && systemctl restart containerd

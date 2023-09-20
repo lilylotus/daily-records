@@ -27,7 +27,9 @@ dns: {}
 etcd:
   local:
     dataDir: /var/lib/etcd
-imageRepository: registry.k8s.io
+# imageRepository: registry.k8s.io
+# 替换为国内的镜像仓库
+imageRepository: registry.aliyuncs.com/google_containers
 kind: ClusterConfiguration
 kubernetesVersion: 1.28.2
 networking:
@@ -35,8 +37,15 @@ networking:
   podSubnet: 10.244.0.0/16
   serviceSubnet: 10.96.0.0/12
 scheduler: {}
-# ---
-# apiVersion: kubelet.config.k8s.io/v1beta1
-# kind: KubeletConfiguration
-# cgroupDriver: systemd
-# cgroupDriver: cgroupfs
+---
+# 申明 cgroup 用 systemd
+apiVersion: kubelet.config.k8s.io/v1beta1
+kind: KubeletConfiguration
+# cgroupfs
+cgroupDriver: systemd
+failSwapOn: false
+---
+# 启用 ipvs
+apiVersion: kubeproxy.config.k8s.io/v1alpha1
+kind: KubeProxyConfiguration
+mode: ipvs
