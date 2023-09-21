@@ -71,6 +71,8 @@ ip route del default via 10.10.10.2 dev ens32
 ### 安装 containerd
 
 ```bash
+yum install -y yum-utils device-mapper-persistent-data lvm2
+yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
 yum install -y containerd.io
 # 配置开启自启
 systemctl enable containerd
@@ -119,7 +121,7 @@ sed -i '/SystemdCgroup/s/false/true/' /etc/containerd/config.toml
 重新加载配置，开机自启，启动 containerd：
 
 ```bash
-systemctl daemon-reload && systemctl enable containerd && systemctl restart containerd
+systemctl daemon-reload && systemctl restart containerd
 ```
 
 ## 部署 k8s
