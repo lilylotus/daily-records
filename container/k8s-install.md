@@ -342,3 +342,188 @@ kubectl taint nodes --all node-role.kubernetes.io/control-plane-
 kubectl taint nodes --all node-role.kubernetes.io/master-
 ```
 
+## 常用插件
+
+### dashboard
+
+#### dashboard 安装
+
+[dashboard 下载链接](https://github.com/kubernetes/dashboard/releases)
+
+`dashboard` v2.7.0 版本安装， [dashboard v2.7.0 安装脚本链接](https://www.nihility.cn/files/container/dashboard-recommended-deploy-v2.7.0.yaml)
+
+```bash
+# dashboard github 安装地址
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.7.0/aio/deploy/recommended.yaml
+
+# 个人分析脚本地址
+kubectl apply -f https://www.nihility.cn/files/container/dashboard-recommended-deploy-v2.7.0.yaml
+```
+
+查看安装情况：
+
+```bash
+# 简略信息
+kubectl get pods -n kubernetes-dashboard
+# 详细信息
+kubectl get pods -n kubernetes-dashboard -o wide
+```
+
+简单 Bearer 登录：
+
+```bash
+# 获取 kubernetes dashboard service 地址
+kubectl get svc -n kubernetes-dashboard -o wide
+
+# 配置 service 为 NodePort
+# 把 type :ClusterIP 改为 type: NodePort 
+kubectl edit svc kubernetes-dashboard  -n kubernetes-dashboard
+```
+
+获取 svc 访问地址：
+
+```bash
+kubectl get svc -n kubernetes-dashboard
+---
+NAME                        TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)         AGE
+dashboard-metrics-scraper   ClusterIP   10.105.33.159   <none>        8000/TCP        28m
+kubernetes-dashboard        NodePort    10.103.26.86    <none>        443:31326/TCP   28m
+
+```
+
+使用 token 登录：
+
+```
+
+```
+
+
+
+#### 创建登录账号
+
+默认情况下，Dashboard 会使用最少的 RBAC 配置进行部署。 当前，Dashboard 仅支持使用 Bearer 令牌登录。
+
+> **注意：** 请确保您知道自己在做什么。向仪表板的服务帐户授予管理员权限可能会存在安全风险。
+
+[创建 dashboard 登录账户](https://github.com/kubernetes/dashboard/blob/master/docs/user/access-control/creating-sample-user.md)：
+
+- 创建一个 `Service Account`，在 *kubernetes-dashboard* 命名空间下创建名为 *admin-user* 的账号。
+
+```bash
+# dashboard-adminuser.yaml
+cat <<EOF > dashboard-adminuser.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: admin-user
+  namespace: kubernetes-dashboard
+EOF
+
+# 应用此配置
+kubectl apply -f dashboard-adminuser.yaml
+```
+
+- 创建集群角色绑定
+
+```bash
+# cluster-role-authorization.yml
+cat <<EOF > cluster-role-authorization.yml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: admin-user
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: admin-user
+  namespace: kubernetes-dashboard
+EOF
+
+kubectl apply -f cluster-role-authorization.yml
+```
+
+- 创建 Service-Account *Bearer Token* 命令执行后会输出 token 。就可以去登录 dashboard 了。
+
+```bash
+kubectl -n kubernetes-dashboard create token admin-user
+```
+
+- 创建长期 token
+
+```bash
+# dashboard-long-live-bearer-token.yaml
+cat <<EOF > dashboard-long-live-bearer-token.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: admin-user
+  namespace: kubernetes-dashboard
+  annotations:
+    kubernetes.io/service-account.name: "admin-user"   
+type: kubernetes.io/service-account-token 
+EOF
+
+kubectl apply -f dashboard-long-live-bearer-token.yaml
+```
+
+- 创建 token 后，获取 token
+
+```bash
+kubectl get secret admin-user -n kubernetes-dashboard -o jsonpath={".data.token"} | base64 -d
+```
+
+- 删除账号
+
+```bash
+kubectl -n kubernetes-dashboard delete serviceaccount admin-user
+kubectl -n kubernetes-dashboard delete clusterrolebinding admin-user
+```
+
+### Ingress
+
+[ingress-nginx 部署链接](https://kubernetes.github.io/ingress-nginx/deploy/)，[ingress github 链接](https://github.com/kubernetes/ingress-nginx)
+
+[ingress controller v1.8.2](https://github.com/kubernetes/ingress-nginx/tree/controller-v1.8.2)，[ingress v1.8.2 部署 yaml](https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.8.2/deploy/static/provider/baremetal/deploy.yaml)
+
+注意：镜像源 `registry.k8s.io` 改为国内镜像源  `registry.aliyuncs.com/google_containers`
+
+```bash
+# github 官方，国内此地址有可能无法访问，且默认 k8s 镜像源无法访问
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.8.2/deploy/static/provider/baremetal/deploy.yaml
+
+# 镜像调整，改为
+image: registry.aliyuncs.com/google_containers/nginx-ingress-controller:v1.8.2
+image: registry.aliyuncs.com/google_containers/kube-webhook-certgen:v20230407
+
+# 个人地址
+kubectl apply -f https://www.nihility.cn/files/container/ingress-controller-baremetal-deploy-v1.8.2.yaml
+```
+
+- 查看部署情况
+
+```bash
+kubectl get pods -n ingress-nginx
+```
+
+- 查看 ingress 代理
+
+```bash
+kubectl get svc -n ingress-nginx
+> ingress-nginx-controller NodePort 10.99.122.88 <none> 80:30915/TCP,443:30157/TCP
+```
+
+## k8s 问题汇总
+
+### 从节点 jion 报错
+
+> error execution phase preflight: couldn't validate the identity of the API Server: could not find a JWS signature in the cluster-info ConfigMap for token ID "abcdef"
+
+解决办法：重新在 master 节点生成新的 join token
+
+```bash
+kubeadm token create --print-join-command
+```
+

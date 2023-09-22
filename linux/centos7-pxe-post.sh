@@ -35,10 +35,10 @@ sysctl -p /etc/sysctl.d/optimize.conf
 echo "10" > /proc/sys/vm/swappiness
 
 # 设置系统打开文件最大数
-cat >> /etc/security/limits.conf <<EOF
-    * soft nofile 65535
-    * hard nofile 65535
-EOF
+# cat >> /etc/security/limits.conf <<EOF
+#     * soft nofile 65535
+#     * hard nofile 65535
+# EOF
 
 # 2. config repository
 echo $(date "+%Y-%m-%d %H:%M:%S") "yum repository config" >> ${LOGPATH}
