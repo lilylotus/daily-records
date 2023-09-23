@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deployment-nginx
+  labels:
+    app: nginx
+    release: stable
+    environment: production
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+      release: stable
+  template:
+    metadata:
+      name: nginx
+      labels:
+        app: nginx
+        release: stable
+    spec:
+      containers:
+      - name: pod-nginx-container
+        image: nginx:1.16.1
+        ports:
+        - containerPort: 80
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service
+spec:
+  selector:
+    app: nginx
+    release: stable
+  type: NodePort
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-nginx
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: ingress.nginx.demo.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: nginx-service
+            port:
+              number: 80
+---
+# ingress kubernetes dashboard
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-nginx-dashboard
+  namespace: kubernetes-dashboard
+  annotations:
+    # 开启 use-regex，启用 path 的正则匹配
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    # 默认为 true，启用 TLS 时，http请求会 308 重定向到 https
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    # 默认为 http，开启后端服务使用 proxy_pass https://协议
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+spec:
+  tls:
+    - hosts:
+        - dashboard.ingress.demo.com
+      secretName: dashboard-cert
+  ingressClassName: nginx
+  rules:
+  - host: dashboard.ingress.demo.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: kubernetes-dashboard
+            port:
+              number: 443
+
+# kubectl get services -n ingress-nginx
+# -> ingress-nginx-controller             NodePort    10.107.88.43    <none>        80:31017/TCP,443:31049/TCP   21m
+# curl http://ingress.yzx.cn:31017
+
+# $ openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout ${KEY_FILE} -out ${CERT_FILE} -subj "/CN=${HOST}/O=${HOST}"
+# openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout dashboard-key.key -out dashboard-cert.crt -subj "/CN=dashboard.ingress.demo.com/O=dashboard.ingress.demo.com"
+# kubectl create secret tls dashboard-cert --key dashboard-key.key --cert dashboard-cert.crt

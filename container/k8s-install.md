@@ -197,7 +197,7 @@ echo 'KUBELET_EXTRA_ARGS="--cgroup-driver=systemd"' > /etc/sysconfig/kubelet
 kubeadm config images list --kubernetes-version=1.28.2 --image-repository=registry.aliyuncs.com/google_containers
 # 拉取镜像
 kubeadm config images pull --kubernetes-version=1.28.2 --image-repository=registry.aliyuncs.com/google_containers
-# 配置 containerd 后重启
+# 配置 containerd 后重启,修改 pause 镜像为 kubernetes 下载镜像
 systemctl daemon-reload && systemctl restart containerd
 ```
 
@@ -243,7 +243,7 @@ mode: ipvs
 kubeadm init --config=kubeadm-init.yaml --upload-certs | tee kubeadm-init.log
 ```
 
-按照初始化完成后的提示执行命令。
+按照初始化完成后的提示执行命令。恭喜兄弟们， `k8s` 就这样安装完成，从节点仅需执行 `jion` 命令就可加入。
 
 ### k8s 镜像下载转换
 

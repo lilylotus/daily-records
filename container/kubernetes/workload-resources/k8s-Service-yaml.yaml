@@ -1,0 +1,133 @@
+# https://kubernetes.io/docs/concepts/services-networking/service
+# https://kubernetes.io/docs/tutorials/kubernetes-basics/expose/expose-intro/
+
+# A Service can map any incoming port to a targetPort. 
+# By default and for convenience, the targetPort is set to the same value as the port field.
+
+#### simple template
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service
+spec:
+  selector:
+    app: nginx
+    release: stable
+  type: ClusterIP
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 80
+
+#### Defining a Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-service
+spec:
+  selector:
+    app: MyApp
+  # https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
+  # Default is ClusterIP, NodePort/LoadBalancer/ExternalName
+  type: ClusterIP
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 9376
+    - name: https
+      protocol: TCP
+      port: 443
+      targetPort: 9377
+    - name: name-of-service-port
+      protocol: TCP
+      port: 8080
+      # can reference Port definitions in Pods have names in the targetPort attribute of a Service
+      targetPort: http-web-svc
+
+
+---
+#### Services without selectors
+# when used with a corresponding Endpoints object and without a selector
+# https://kubernetes.io/docs/concepts/services-networking/service/#services-without-selectors
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-service
+spec:
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 9376
+---
+# adding an Endpoints object manually
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: my-service
+subsets:
+  - addresses:
+      - ip: 192.0.2.42
+    ports:
+      - port: 9376
+
+---
+#### Headless Services
+# https://kubernetes.io/docs/concepts/services-networking/service/#headless-services
+# don't need load-balancing and a single Service IP
+apiVersion: v1
+kind: Service
+metadata:
+  name: headless-services
+  labels:
+    run: headless-services
+spec:
+  # create what are termed "headless" Services
+  clusterIP: None
+  ports:
+  - port: 80
+    protocol: TCP
+  selector:
+    run: my-nginx
+
+
+---
+#### Type NodePort
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-service
+spec:
+  type: NodePort
+  selector:
+    app: MyApp
+  ports:
+      # By default and for convenience, the `targetPort` is set to the same value as the `port` field.
+    - name: http
+      port: 80
+      targetPort: 80
+      # Optional field
+      # By default and for convenience, the Kubernetes control plane will
+      # allocate a port from a range (default: 30000-32767)
+      nodePort: 30007
+
+---
+#### Type LoadBalancer
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-service
+spec:
+  selector:
+    app: MyApp
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 9376
+  clusterIP: 10.0.171.239
+  type: LoadBalancer
+status:
+  loadBalancer:
+    ingress:
+    - ip: 192.0.2.127

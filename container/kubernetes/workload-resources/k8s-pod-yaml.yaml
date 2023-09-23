@@ -1,0 +1,123 @@
+# https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/pod-v1/
+# Pod is a collection of containers that can run on a host. This resource is created by clients and scheduled onto hosts.
+apiVersion: v1
+kind: Pod
+# https://kubernetes.io/docs/reference/kubernetes-api/common-definitions/object-meta/#ObjectMeta
+metadata:
+  # 名称在命名空间中必须是唯一的，无法更新
+  # 注意：metadata name 仅能用 . 或 - 分隔且小写字母
+  name: pod-name
+  # An empty namespace is equivalent to the "default" namespace
+  namespace: default
+  # Map of string keys and values that can be used to organize and categorize (scope and select) objects
+  labels:
+    app: nginx
+    release: stable
+    environment: production
+# https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/pod-v1/#PodSpec
+spec:
+  # List of containers belonging to the pod
+  # 当前无法添加或删除容器，Pod 中必须至少有一个容器且无法更新
+  # https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/pod-v1/#Container
+  containers:
+  # Name of the container specified as a DNS_LABEL
+  - name: pod-nginx-container
+    image: nginx:1.16.1
+    # Defaults to Always if :latest tag is specified, or IfNotPresent otherwise.
+    # Always, Never, IfNotPresent
+    imagePullPolicy: IfNotPresent
+    # https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/pod-v1/#entrypoint
+    # https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell
+    # The docker image's ENTRYPOINT is used if this is not provided.
+    command: ["printenv"]
+    # Arguments to the entrypoint. The docker image's CMD is used if this is not provided.
+    # Variable references $(VAR_NAME) are expanded using the container's environment.
+    args: ["/bin/sh", "-c", "touch /tmp/healthy; sleep 30; rm -rf /tmp/healthy; sleep 600"]
+    workingDir: /opt
+    # https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/pod-v1/#ports
+    ports:
+    # required, Number of port to expose on the pod's IP address
+    - containerPort: 80
+      name: nginx-expose-port
+      # TCP, UDP, SCTP - Defaults to "TCP"
+      protocol: TCP
+    # https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/pod-v1/#environment-variables
+    env:
+    - name: nginxEnvKey
+      # Variable references $(VAR_NAME) 
+      value: nginxEvnValue
+    volumeMounts:
+    - name: nginx-data
+      mountPath: /data
+    lifecycle:
+      postStart:
+        exec:
+          command:
+          - cat
+          - /tmp/healthy
+      preStop:
+        exec:
+          command: ["rm", "-rf", "/data"]
+    livenessProbe:
+      exec:
+        command: ["echo", "livenessProbe", "/data/pod.log"]
+    readinessProbe:
+      exec:
+        command: ["echo", "livenessProbe", "/data/pod.log"]
+    startupProbe:
+      exec:
+        command: ["echo", "livenessProbe", "/data/pod.log"]
+  # https://kubernetes.io/docs/reference/kubernetes-api/config-and-storage-resources/volume/#Volume
+  volumes:
+  - name: pv
+    # EmptyDir represents a temporary directory that shares a pod's lifetime
+    emptyDir: {}
+# Always, OnFailure, Never - Default to Always
+restartPolicy: Always
+    
+---
+# simple pod template
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+  labels:
+    app: nginx
+    release: stable
+    environment: production
+spec:
+  containers:
+  - name: pod-nginx-container
+    image: nginx:1.16.1
+    ports:
+    - containerPort: 80
+      name: nginx
+    env:
+    - name: APP_NAME
+      value: nginx
+    volumeMounts:
+    - name: share-data
+      mountPath: /data
+  volumes:
+  - name: share-data
+    emptyDir: {}
+
+---
+# 自测 pod
+apiVersion: v1
+kind: Pod
+metadata:
+  name: host-info
+  labels:
+    app: host-info
+    release: v1
+spec:
+  containers:
+  - name: pod-node-host
+    image: harbor.nihility.cn/k8s/host:v1
+    imagePullPolicy: Always
+    ports:
+    - containerPort: 8080
+      name: node-host
+  imagePullSecrets:
+    - name: registry-secret-cm

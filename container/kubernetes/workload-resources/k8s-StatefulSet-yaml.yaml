@@ -1,0 +1,62 @@
+# https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/stateful-set-v1/
+# StatefulSet represents a set of pods with consistent identities. Identities are defined as:
+# Network: A single stable DNS and hostname.
+# Storage: As many VolumeClaims as requested. 
+# The StatefulSet guarantees that a given network identity will always map to the same storage identity.
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: stateful-set-name
+  labels:
+    app: StatefulSet
+spec:
+  # (string), required, serviceName is the name of the service that governs this StatefulSet
+  serviceName: serviceName
+  #  (LabelSelector), required
+  selector: {}
+  # (PodTemplateSpec), required
+  template: {}
+  replicas: 3
+  # when a revision is made to Template.
+  updateStrategy:
+    # Default is RollingUpdate. OnDelete/RollingUpdate
+    type: RollingUpdate
+    rollingUpdate:
+      # Default 0
+      partition: 0
+  # controls how pods are created during initial scale up
+  # when replacing pods on nodes, or when scaling down.
+  # OrderedReady/Parallel
+  podManagementPolicy: OrderedReady
+
+---
+# simple template
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: stateful-set-name
+  labels:
+    app: StatefulSet
+spec:
+  serviceName: serviceName
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      name: nginx
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: pod-nginx-container
+        image: nginx:1.16.1
+        ports:
+        - containerPort: 80
+  replicas: 3
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      partition: 0
+  podManagementPolicy: OrderedReady

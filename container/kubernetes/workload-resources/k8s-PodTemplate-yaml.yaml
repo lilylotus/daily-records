@@ -1,0 +1,48 @@
+# https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/pod-template-v1/#PodTemplate
+# PodTemplate describes a template for creating copies of a predefined pod.
+apiVersion: v1
+kind: PodTemplate
+metadata:
+  name: pod-template-name
+  labels:
+    app: PodTemplateApp
+template:
+  metadata:
+    name: template-name
+    labels:
+      app: templateApp
+  # https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/pod-v1/#PodSpec
+  spec:
+    ...
+
+---
+# https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/pod-template-v1/#PodTemplateList
+# PodTemplateList
+apiVersion: v1
+kind: PodTemplateList
+metadata:
+  name: pod-template-list-name
+  labels:
+    app: PodTemplateListApp
+# List PodTemplate
+items: []
+
+---
+# simple template
+apiVersion: v1
+kind: PodTemplate
+metadata:
+  name: pod-template-name
+  labels:
+    app: PodTemplateApp
+template:
+  metadata:
+    name: nginx
+    labels:
+      app: nginx
+  spec:
+    containers:
+    - name: pod-nginx-container
+      image: nginx:1.16.1
+      ports:
+      - containerPort: 80

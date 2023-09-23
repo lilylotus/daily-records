@@ -1,0 +1,29 @@
+# https://github.com/kubernetes/dashboard/blob/master/docs/user/access-control/creating-sample-user.md#creating-sample-user
+# Creating a Service Account
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: admin-user
+  namespace: kubernetes-dashboard
+
+---
+# Creating a ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: admin-user
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: admin-user
+  namespace: kubernetes-dashboard
+
+# Getting a Bearer Token
+# kubectl -n kubernetes-dashboard create token admin-user
+
+# Clean up and next steps
+# kubectl -n kubernetes-dashboard delete serviceaccount admin-user
+# kubectl -n kubernetes-dashboard delete clusterrolebinding admin-user

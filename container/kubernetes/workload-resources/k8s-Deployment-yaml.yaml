@@ -1,0 +1,59 @@
+# https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/deployment-v1/
+# Deployment enables declarative updates for Pods and ReplicaSets.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deployment-name
+  labels:
+    app: deployment-app
+    release: stable
+    environment: production
+spec:
+  #  (LabelSelector), required
+  selector: {}
+  # (PodTemplateSpec), required
+  template: {}
+  replicas: 3
+  # The deployment strategy to use to replace existing pods with new ones.
+  strategy:
+    # "Recreate" or "RollingUpdate". Default is RollingUpdate.
+    type: RollingUpdate
+    rollingUpdate:
+      # 1 , 10%
+      maxSurge: 1
+      # 1 , 10%
+      maxUnavailable: 1
+
+---
+# simple example
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deployment-name
+  labels:
+    app: deployment-app
+    release: stable
+    environment: production
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+      release: stable
+  template:
+    metadata:
+      name: nginx
+      labels:
+        app: nginx
+        release: stable
+    spec:
+      containers:
+      - name: pod-nginx-container
+        image: nginx:1.16.1
+        ports:
+        - containerPort: 80
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1

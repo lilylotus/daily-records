@@ -1,0 +1,22 @@
+# https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/horizontal-pod-autoscaler-v2/
+
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: horizontal-pod-autoscaler-name
+  labels:
+    app: HorizontalPodAutoscalerApp
+spec:
+  maxReplicas: 10
+  minReplicas: 2
+  scaleTargetRef:
+    kind:
+    name:
+    apiVersion: v1
+  behavior:
+    scaleDown:
+      policies:
+      - type: scaling-policy
+        value: 1
+        periodSeconds: 10
+      selectPolicy: scaling-policy
