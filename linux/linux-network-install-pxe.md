@@ -2,7 +2,7 @@
 
 [Linux Centos7 网络安装参考](https://docs.centos.org/en-US/centos/install-guide/pxe-server/)，[PXE 网络安装文档](https://dl.acronis.com/u/storage2/html/AcronisStorage_2_installation_pxe_guide_en-US/introduction.html)，[EFI 安装](https://docs.centos.org/en-US/centos/install-guide/pxe-server/#sect-network-boot-setup-uefi)
 
-## PXE 网络安装准备
+## PXE 服务器准备
 
 ### 关闭防火墙和 Selinux
 
@@ -105,6 +105,19 @@ Centos7 下载文件如：
 kernel-lt 中 **lt** 是 [long term support] 的缩写，elrepo-kernel 长期支持版本。
 
 kernel-ml 中 **ml** 是 [mainline stable] 的缩写，elrepo-kernel 是最新的稳定主线版本。
+
+内核升级命令：
+
+```bash
+# 安装下载的内核 rpm 包
+yum install -y *.rpm
+# 开机默认内核为刚安装内核
+grub2-set-default 0 && grub2-mkconfig -o /etc/grub2.cfg
+# 内核参数
+grubby --args="user_namespace.enable=1" --update-kernel="$(grubby --default-kernel)"
+```
+
+
 
 ## PXE 自动安装脚本
 

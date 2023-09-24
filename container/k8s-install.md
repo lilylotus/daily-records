@@ -178,8 +178,11 @@ echo 'KUBELET_EXTRA_ARGS="--cgroup-driver=systemd"' > /etc/sysconfig/kubelet
 查看默认初始化配置 : `kubeadm config print init-defaults`
 
 列出初始化镜像: `kubeadm config images list --kubernetes-version ${k8s_version}`
+
 拉取指定版本 k8s 镜像: `kubeadm config images pull --kubernetes-version ${k8s_version}`
+
 按照指定配置文件拉取 k8s 镜像: `kubeadm config images pull --config=kubeadm-init.yaml`
+
 指定 k8s 初始化: `kubeadm init --config=kubeadm-init.yaml --upload-certs | tee kubeadm-init.log`
 
 ### kubeadm 初始化安装
@@ -514,6 +517,13 @@ kubectl get pods -n ingress-nginx
 kubectl get svc -n ingress-nginx
 > ingress-nginx-controller NodePort 10.99.122.88 <none> 80:30915/TCP,443:30157/TCP
 ```
+
+## k8s 一键安装脚本
+
+1. 执行 k8s 环境和系统内核参数初始化脚本：[k8s 环境初始化脚本](https://www.nihility.cn/files/container/k8s-prepare-env.sh)
+2. 执行 k8s master 初始化脚本：[k8s  master 初始化脚本](https://www.nihility.cn/files/container/k8s-master-init.sh)
+3. 执行 k8s calico 网络初始化脚本：[k8s  calico 网络初始化脚本](https://www.nihility.cn/files/container/k8s-calico-install.sh)
+4. k8s 从节点安装脚本：[k8s 从节点安装脚本](https://www.nihility.cn/files/container/k8s-slave-init.sh)
 
 ## k8s 问题汇总
 

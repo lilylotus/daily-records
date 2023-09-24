@@ -24,6 +24,7 @@
 
 - ... 其它的组件请自行查看 k8s [工作负载资源文档](https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/)
 
+推荐使用的资源：Deployment，StatefulSet，DaemonSet。
 
 ## Pod
 

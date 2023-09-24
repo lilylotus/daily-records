@@ -1,6 +1,6 @@
 # containerd
 
-[containerd 官网](https://containerd.io/)
+[containerd 官网](https://containerd.io/)，[kubernetes v1.24 移除了 Dockershim，默认使用 Containerd 作为容器运行时](https://kubernetes.io/docs/setup/production-environment/container-runtimes/)
 
 ## 安装
 
