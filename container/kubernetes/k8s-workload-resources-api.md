@@ -145,58 +145,6 @@ spec:
       maxUnavailable: 1
 ```
 
-## ReplicaSet
-
-ReplicaSet 确保在任何给定时间都运行指定数量的 Pod 副本。
-
-[ReplicaSet 参考文档](https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/replica-set-v1/)
-
----
-
-规范定义字段：
-
-- **apiVersion**: apps/v1
-- **kind**: ReplicaSet
-- **metadata** ([ObjectMeta](https://kubernetes.io/docs/reference/kubernetes-api/common-definitions/object-meta/#ObjectMeta))
-- **spec** ([ReplicaSetSpec](https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/replica-set-v1/#ReplicaSetSpec))：Spec 定义了 ReplicaSet 所需行为的规范。
-- **status** ([ReplicaSetStatus](https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/replica-set-v1/#ReplicaSetStatus))：Status 是最近观察到的 ReplicaSet 状态。
-
----
-
-示例 yaml 配置：
-
-```yaml
-apiVersion: apps/v1
-kind: ReplicaSet
-metadata:
-  name: replica-set-test
-  labels:
-    app: replica-set-app
-    release: v1
-spec:
-  replicas: 3
-  selector:
-    matchExpressions:
-    - key: app
-      operator: In
-      values: ["nginx"]
-    matchLabels:
-      app: nginx
-      release: v2
-  template:
-    metadata:
-      name: nginx
-      labels:
-        app: nginx
-        release: v2
-    spec:
-      containers:
-      - name: pod-nginx-container
-        image: nginx:1.25.2
-        ports:
-        - containerPort: 80
-```
-
 ## StatefullSets
 
 StatefulSet 表示一组具有一致身份的 Pod。

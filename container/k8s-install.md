@@ -124,6 +124,29 @@ sed -i '/SystemdCgroup/s/false/true/' /etc/containerd/config.toml
 systemctl daemon-reload && systemctl restart containerd
 ```
 
+
+
+### cni 网络插件安装
+
+[CNI](https://github.com/containernetworking/cni) (*Container Network Interface*) - 容器网络接口。[CNI 插件版本列表](https://github.com/containernetworking/plugins/releases)，[cni 1.3.0 x86 下载](https://github.com/containernetworking/plugins/releases/download/v1.3.0/cni-plugins-linux-amd64-v1.3.0.tgz)
+
+默认 cni 网络接口插件 bin 路径：`/etc/containerd/config.toml`  cni 下配置定义。
+
+```toml
+[plugins]
+    [plugins."io.containerd.grpc.v1.cri".cni]
+      bin_dir = "/opt/cni/bin"
+      conf_dir = "/etc/cni/net.d"
+```
+
+- cni 插件安装
+
+```bash
+# cni 网络配置
+mkdir -p /opt/cni/bin/
+tar -zxf cni-plugins-linux-amd64-v1.3.0.tgz -C /opt/cni/bin/
+```
+
 ## 部署 k8s
 
 ### 安装 k8s
@@ -284,7 +307,7 @@ kubeadm config images list --kubernetes-version=${K8S_VERSION} | awk -F'/' '{pri
 
 ```
 
-### kubeadm 初始化
+### kubeadm 命令初始化
 
 ```bash
 # 提取拉取镜像，指定镜像仓库

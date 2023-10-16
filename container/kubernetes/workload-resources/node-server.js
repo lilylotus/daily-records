@@ -5,6 +5,8 @@ const os = require('os');
 const HOST = '0.0.0.0';
 const PORT = 8080;
 
+var healthVar = true;
+
 function querHostIp() {
 	// 服务器本机地址
 	const interfaces = os.networkInterfaces();
@@ -26,7 +28,19 @@ const server = createServer((req, resp) => {
   const path = url.parse(req.url).pathname;
   console.log("Request for " + path + " received.");
 
-  if (path === '/info') {
+  if (path === '/healthz') {
+  	if (healthVar === true) {
+	  	resp.writeHead(200, { 'Content-Type': 'text/plain' });
+	  	resp.end('nodejs http server is health.');
+  	} else {
+	  	resp.writeHead(500, { 'Content-Type': 'text/plain' });
+	  	resp.end('nodejs http server is unhealth.');
+  	}
+  } else if (path === '/shutdown') {
+  	healthVar = false;
+  	resp.writeHead(200, { 'Content-Type': 'text/plain' });
+  	resp.end('nodejs http server is shutdown.');
+  } else if (path === '/info') {
   	resp.writeHead(200, { 'Content-Type': 'text/plain' });
   	resp.end('nodejs http server info');
   } else if (path === '/interfaces') {
@@ -59,10 +73,8 @@ server.listen(PORT, HOST, (error) => {
   console.log(`server is listening on http://${HOST}:${PORT} ...`, ' PID = ', process.pid);
 });
 
-/** 改造部分 关于进程结束相关信号可自行搜索查看*/
-process.on('SIGTERM', close.bind(this, 'SIGTERM'));
-process.on('SIGINT', close.bind(this, 'SIGINT'));
 
+/** 改造部分 关于进程结束相关信号可自行搜索查看*/
 function close(signal) {
     console.log(`收到 ${signal} 信号开始处理`);
     server.close(() => {
@@ -70,4 +82,7 @@ function close(signal) {
         process.exit(0);
     });
 }
+
+process.on('SIGTERM', close.bind(this, 'SIGTERM'));
+process.on('SIGINT', close.bind(this, 'SIGINT'));
 /** 改造部分 */
